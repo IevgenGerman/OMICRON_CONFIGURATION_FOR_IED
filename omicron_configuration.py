@@ -15,7 +15,7 @@ Result (folder Omicron next to DOC, one sub-folder per IED):
   Omicron\\<IED>\\<IED>_Omicron_AI_Test_<n>.ohc   (one per test sheet with SV data)
   Omicron\\<IED>\\<IED>_Omicron.ohc               (device without SV data: GOOSE only)
   Omicron\\_omicron_report.txt
-Also used by the GUI ied_doc_configurator.py (functions list_devices / run).
+Also used by the GUI ied2omicron.py (functions list_devices / run).
 
 What is written into the master (everything else stays as it is):
   binary inputs  : name of "Bin. in n" / "vBin. in g-k"   <- Omicron Binary Inputs, column D (Omicron ID)

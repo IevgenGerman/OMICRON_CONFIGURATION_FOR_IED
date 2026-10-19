@@ -15,7 +15,7 @@ Project folder:
   DOC\\<IED>.xlsm             sheets Omicron Binary Inputs / Omicron Binary Outputs
 Result (folder Omicron next to DOC, one sub-folder per IED):
   Omicron\\<IED>\\<IED>_GOOSE.xml  +  Omicron\\_goose_report.txt
-Also used by the GUI ied_doc_configurator.py (functions list_devices / run / update_files).
+Also used by the GUI ied2omicron.py (functions list_devices / run / update_files).
 
 UPDATE of an existing GOOSE configuration from new CID files (update_files,
   CLI: --update A_GOOSE.xml [B_GOOSE.xml ...] --cid <folder with the new CID files>):

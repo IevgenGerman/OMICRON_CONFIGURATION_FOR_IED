@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ied_doc_manual.py - user manual of IED_DOC_CONFIGURATOR (Ukrainian / English),
+ied_doc_manual.py - user manual of "IED → OMICRON Auto Config" (Ukrainian / English),
 shown by the button "i".
 
 Markup (one paragraph per line):
@@ -20,7 +20,7 @@ DEFAULT_LANG = "en"
 MANUAL = {}
 
 # =====================================================================================
-MANUAL["uk"] = """# IED_DOC_CONFIGURATOR  {version} — посібник користувача
+MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник користувача
 
 Вихідний код програми: [[OMICRON_CONFIGURATION_FOR_IED|%(src)s]]
 
@@ -32,9 +32,10 @@ MANUAL["uk"] = """# IED_DOC_CONFIGURATOR  {version} — посібник кор�
     • конфігурацію GOOSE (*.xml) — підписки і симуляції GOOSE з прив'язкою до входів/виходів CMC;
     • оновлення вже готових конфігурацій GOOSE за новими CID.
 Файли Excel і CID програма тільки читає й ніколи не змінює.
+Незалежний інструмент, не пов'язаний з OMICRON electronics і не схвалений нею. OMICRON і Test Universe — торговельні марки OMICRON electronics GmbH.
 
 ## 2. Що потрібно
-Запуск: exe-файл IED_DOC_CONFIGURATOR (нічого встановлювати не треба) або з PyCharm / Python: ied_doc_configurator.py. Поруч мають лежати omicron_configuration.py, omicron_goose_config.py та ied_doc_manual.py; потрібен пакет openpyxl.
+Запуск: exe-файл IED2OMICRON (нічого встановлювати не треба) або з PyCharm / Python: ied2omicron.py. Поруч мають лежати omicron_configuration.py, omicron_goose_config.py та ied_doc_manual.py; потрібен пакет openpyxl.
 Структура папки проєкту:
     <Проєкт>\\
       General_PB.xlsm          головна книга проєкту
@@ -149,7 +150,7 @@ Excel і General_PB не змінюються. Якщо склад набору 
 """ % dict(src=URL_SOURCE, gpb=URL_GENERAL_PB, author=URL_AUTHOR)
 
 # =====================================================================================
-MANUAL["en"] = """# IED_DOC_CONFIGURATOR  {version} — user manual
+MANUAL["en"] = """# IED → OMICRON Auto Config  {version} — user manual
 
 Source code of the program: [[OMICRON_CONFIGURATION_FOR_IED|%(src)s]]
 
@@ -161,9 +162,10 @@ The program takes the data of a General_PB (Excel) project and the CID files and
     • GOOSE configuration (*.xml) — GOOSE subscriptions and simulations mapped to the CMC inputs/outputs;
     • update of existing GOOSE configurations from new CID files.
 The program only reads the Excel and CID files and never changes them.
+Independent tool, not affiliated with or endorsed by OMICRON electronics. OMICRON and Test Universe are trademarks of OMICRON electronics GmbH.
 
 ## 2. Requirements
-Start: the exe file IED_DOC_CONFIGURATOR (nothing to install) or from PyCharm / Python: ied_doc_configurator.py. Next to it: omicron_configuration.py, omicron_goose_config.py and ied_doc_manual.py; the package openpyxl is needed.
+Start: the exe file IED2OMICRON (nothing to install) or from PyCharm / Python: ied2omicron.py. Next to it: omicron_configuration.py, omicron_goose_config.py and ied_doc_manual.py; the package openpyxl is needed.
 Project folder:
     <Project>\\
       General_PB.xlsm          main workbook of the project

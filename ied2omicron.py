@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-ied_doc_configurator.py - GUI for the OMICRON files of a General_PB project
+ied2omicron.py - "IED → OMICRON Auto Config": GUI for the OMICRON files of a General_PB project
 (author: German Ievgen).
 
-  python ied_doc_configurator.py
+  python ied2omicron.py
 
 Needs next to it: omicron_configuration.py, omicron_goose_config.py, ied_doc_manual.py
 Needs: Python 3 (with tkinter), openpyxl (pip install openpyxl).
@@ -25,17 +25,20 @@ import omicron_configuration as oc            # noqa: E402
 import omicron_goose_config as og             # noqa: E402
 import ied_doc_manual as man                  # noqa: E402
 
-APP = "IED_DOC_CONFIGURATOR"
+APP = "IED → OMICRON Auto Config"
 VERSION = "v 0.0.2"
-SETTINGS = os.path.join(os.path.expanduser("~"), ".ied_doc_configurator.json")
+SETTINGS = os.path.join(os.path.expanduser("~"), ".ied2omicron.json")
+OLD_SETTINGS = os.path.join(os.path.expanduser("~"), ".ied_doc_configurator.json")   # v0.0.2 before the rename
 
 
 def load_settings():
-    try:
-        with open(SETTINGS, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    for p in (SETTINGS, OLD_SETTINGS):
+        try:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 
 def save_settings(d):

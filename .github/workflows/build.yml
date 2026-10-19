@@ -1,0 +1,41 @@
+# Builds IED2OMICRON.exe on Windows and attaches it to a GitHub Release
+# when a tag like v0.0.2 is pushed:   git tag v0.0.2 && git push origin v0.0.2
+name: build-exe
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build exe
+        run: pyinstaller --clean --onefile --windowed --name IED2OMICRON ied2omicron.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IED2OMICRON
+          path: dist/IED2OMICRON.exe
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/IED2OMICRON.exe
