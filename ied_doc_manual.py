@@ -30,12 +30,13 @@ MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник 
 Програма бере дані проєкту General_PB (Excel) і файли CID та створює файли для OMICRON Test Universe. Що таке General_PB: [[IEC61850_text_configurator|%(gpb)s]]
     • конфігурацію обладнання (*.ohc) — назви бінарних входів/виходів, аналогових каналів і потоки Sampled Values (SV);
     • конфігурацію GOOSE (*.xml) — підписки і симуляції GOOSE з прив'язкою до входів/виходів CMC;
-    • оновлення вже готових конфігурацій GOOSE за новими CID.
+    • оновлення вже готових конфігурацій GOOSE за новими CID;
+    • об'єкти випробувань (*.xrio) — паспорт пристрою, місце встановлення і номінальні значення.
 Файли Excel і CID програма тільки читає й ніколи не змінює.
 Незалежний інструмент, не пов'язаний з OMICRON electronics і не схвалений нею. OMICRON і Test Universe — торговельні марки OMICRON electronics GmbH.
 
 ## 2. Що потрібно
-Запуск: exe-файл IED2OMICRON (нічого встановлювати не треба) або з PyCharm / Python: ied2omicron.py. Поруч мають лежати omicron_configuration.py, omicron_goose_config.py та ied_doc_manual.py; потрібен пакет openpyxl.
+Запуск: exe-файл IED2OMICRON (нічого встановлювати не треба) або з PyCharm / Python: ied2omicron.py. Поруч мають лежати omicron_configuration.py, omicron_goose_config.py, omicron_xrio.py та ied_doc_manual.py; потрібен пакет openpyxl.
 Структура папки проєкту:
     <Проєкт>\\
       General_PB.xlsm          головна книга проєкту
@@ -43,12 +44,14 @@ MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник 
       Library\\                 майстер-файли:
          default_01.ohc        майстер конфігурації обладнання
          default_goose.xml     майстер конфігурації GOOSE
+         test_object_default.xrio   майстер об'єкта випробувань
       CID\\                     CID (*.cid, *.icd, *.scd, *.iid) усіх пристроїв, що беруть участь у GOOSE
       Omicron\\                 СТВОРЮЄТЬСЯ ПРОГРАМОЮ — результати
          <IED>\\                окрема папка для кожного пристрою
 Майстер-файли — це порожні конфігурації, збережені в Test Universe. Програма не створює їх з нуля, а заповнює:
     • default_01.ohc — з увімкненими віртуальними входами/виходами GOOSE (7×24) і трьома потоками SV (6 груп аналогових каналів по 4);
-    • default_goose.xml — порожня конфігурація модуля GOOSE.
+    • default_goose.xml — порожня конфігурація модуля GOOSE;
+    • test_object_default.xrio — об'єкт випробувань, збережений у Test Universe (Device Settings).
 Загальні налаштування (CMC, PTP, IRIG-B, мережевий порт тощо) задаються один раз у майстрі й переходять у всі створені файли.
 
 ## 3. Головне вікно
@@ -59,7 +62,8 @@ MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник 
     Create Omicron_configurations   — розділ 4
     Create GOOSE_configurations     — розділ 5
     Update GOOSE_configurations     — розділ 6
-    Open Omicron folder             — розділ 7
+    Create XRIO_test_objects        — розділ 7
+    Open Omicron folder             — розділ 8
     Журнал            хід роботи і підсумковий звіт кожної дії
     Рядок стану       Ready / Working… / результат / Stopped
 Поки триває дія, кнопки неактивні, а вікно лишається відкритим (можна гортати журнал). Після завершення з'являється повідомлення.
@@ -133,12 +137,44 @@ GCB шукається в CID за MAC-адресою (з аркуша або з
 Результат: поруч з оригіналом — <IED>_GOOSE_updated_<дата>_<час>.xml (оригінал не змінюється). Файл записується, лише якщо щось змінилось; інакше у звіті «nothing to update». Звіт _goose_update_report_<дата>_<час>.txt — у тій самій папці та в журналі вікна.
 Excel і General_PB не змінюються. Якщо склад набору даних змінився, оновіть його і в General_PB.
 
-## 7. Open Omicron folder
+## 7. Create XRIO_test_objects (файли *.xrio)
+Що робить: для кожного вибраного пристрою створює об'єкти випробувань Test Universe — по одному на кожен аркуш «Omicron AI <тест>», у якому є підписки на потоки SV (стовпець F — SV ID).
+Порядок дій: як у розділі 4 — кнопка, список пристроїв з галочками, Create.
+Що записується (вікно Test Universe «Device Settings»); усе інше в майстрі лишається без змін:
+    Name/description       ← IEDName
+    Manufacturer           ← Manufacturer типу пристрою (General_PB, Device_Type); не задано — порожньо
+    Device type            ← Order code пристрою (General_PB, GEN), інакше order_code типу; не задано — порожньо
+    Device address         ← IP Station Bus (GEN, IP SB), якщо немає — IP Process Bus (IP PB)
+    Substation: Name       ← Project name   (General_PB Editor → Project)
+    Substation: Address    ← Project address (General_PB Editor → Project)
+    Bay: Name              ← BAY пристрою (Settings_IED)
+Номінальні значення беруться з аркуша SV General_PB (стовпці N…W) для потоків, на які підписаний тест:
+    f nom                  ← F, Hz
+    V nom (secondary)      ← Vn secondary f-f, V
+    V primary              ← Vn primary f-f, kV × 1000
+    I nom (secondary)      ← In secondary, A
+    I primary              ← In primary, A
+    Residual voltage/current factors:
+       VLN / VN            = (Vneutral primary × 1000 / Vneutral secondary) / (V primary / V nom)
+       IN / I nom          = (I primary / I nom) / (Ineutral primary / Ineutral secondary)
+       VN sec, IN sec, instrument transformer ← Vneutral secondary, Ineutral secondary, Instrumental transformer
+У General_PB ці значення задаються в типі пристрою (Device_Type, блок SVCB<n>; за замовчуванням — значення test_object_default.xrio) і переносяться на аркуш SV кнопками Create / Update Gen/SV. Update зберігає значення, змінені вручну на аркуші SV.
+Перевірка: усі потоки SV одного тесту мають однакові номінальні значення. Якщо значення різні або порожні, файл для цього тесту НЕ створюється, програма показує повідомлення, а причина записується у звіт, наприклад:
+    W1G_D60 / Test 2: SV streams have different nominal values - test object cannot be created for this configuration: In secondary, A MU02_QW1G_01 1 <> MU01_QC1G_02 5
+Результат:
+    Omicron\\<IED>\\test_object_<IED>_AI_Test_<n>.xrio
+    Omicron\\_xrio_report.txt                     — звіт
+Пристрій без жодної підписки на SV (аркушів «Omicron AI» немає або в них немає SV ID): створюється ОДИН файл Omicron\\<IED>\\test_object_<IED>.xrio — заповнюється лише перша частина (паспорт і місце встановлення), номінальні значення лишаються з майстра. Якщо в пристрою є тести з підписками, аркуш без SV ID просто пропускається (примітка у звіті).
+Якщо такий файл уже є (можливо, ви доповнили його в Test Universe уставками), він НЕ перезаписується: поруч створюється файл з датою і часом у назві (…_<дата>_<час>.xrio).
+
+## 8. Open Omicron folder
 Відкриває папку <Проєкт>\\Omicron у Провіднику. Якщо її ще немає, програма про це повідомить.
 
-## 8. Типові повідомлення і що робити
+## 9. Типові повідомлення і що робити
     Project folder not found / General_PB.xlsm not found  → вкажіть папку, де лежать General_PB.xlsm і DOC
     No master .ohc file / Master file not found           → покладіть default_01.ohc або default_goose.xml у Library
+    Master test object not found                          → покладіть test_object_default.xrio у Library
+    SV streams have different nominal values / nominal values empty → виправте номінали на аркуші SV General_PB (розділ 7)
     Folder with the CID files not found                   → створіть папку CID у проєкті
     CID files are missing …                               → додайте CID названих пристроїв (розділ 5)
     SV ID … not on General_PB SV                          → SV ID з аркуша тесту немає в General_PB; потік лишається як у майстрі
@@ -160,12 +196,13 @@ It is essentially an MVP (minimum viable product) for a future project. It is no
 The program takes the data of a General_PB (Excel) project and the CID files and creates files for OMICRON Test Universe. What General_PB is: [[IEC61850_text_configurator|%(gpb)s]]
     • hardware configuration (*.ohc) — names of binary inputs/outputs, analog channels and the Sampled Values (SV) streams;
     • GOOSE configuration (*.xml) — GOOSE subscriptions and simulations mapped to the CMC inputs/outputs;
-    • update of existing GOOSE configurations from new CID files.
+    • update of existing GOOSE configurations from new CID files;
+    • test objects (*.xrio) — nameplate, location and nominal values of the device.
 The program only reads the Excel and CID files and never changes them.
 Independent tool, not affiliated with or endorsed by OMICRON electronics. OMICRON and Test Universe are trademarks of OMICRON electronics GmbH.
 
 ## 2. Requirements
-Start: the exe file IED2OMICRON (nothing to install) or from PyCharm / Python: ied2omicron.py. Next to it: omicron_configuration.py, omicron_goose_config.py and ied_doc_manual.py; the package openpyxl is needed.
+Start: the exe file IED2OMICRON (nothing to install) or from PyCharm / Python: ied2omicron.py. Next to it: omicron_configuration.py, omicron_goose_config.py, omicron_xrio.py and ied_doc_manual.py; the package openpyxl is needed.
 Project folder:
     <Project>\\
       General_PB.xlsm          main workbook of the project
@@ -173,12 +210,14 @@ Project folder:
       Library\\                 master files:
          default_01.ohc        master of the hardware configuration
          default_goose.xml     master of the GOOSE configuration
+         test_object_default.xrio   master of the test object
       CID\\                     CID files (*.cid, *.icd, *.scd, *.iid) of all devices taking part in GOOSE
       Omicron\\                 CREATED BY THE PROGRAM — results
          <IED>\\                one folder per device
 The master files are empty configurations saved in Test Universe. The program does not build them from scratch, it fills them:
     • default_01.ohc — with the GOOSE virtual inputs/outputs enabled (7×24) and three SV streams (6 groups of 4 analog channels);
-    • default_goose.xml — an empty configuration of the GOOSE module.
+    • default_goose.xml — an empty configuration of the GOOSE module;
+    • test_object_default.xrio — a test object saved in Test Universe (Device Settings).
 General settings (CMC, PTP, IRIG-B, network port etc.) are set once in the master and go into every created file.
 
 ## 3. Main window
@@ -189,7 +228,8 @@ General settings (CMC, PTP, IRIG-B, network port etc.) are set once in the maste
     Create Omicron_configurations   — section 4
     Create GOOSE_configurations     — section 5
     Update GOOSE_configurations     — section 6
-    Open Omicron folder             — section 7
+    Create XRIO_test_objects        — section 7
+    Open Omicron folder             — section 8
     Log               progress and the final report of every action
     Status line       Ready / Working… / result / Stopped
 While an action runs the buttons are disabled and the window stays open (the log can be scrolled). A message appears at the end.
@@ -263,12 +303,44 @@ A renamed signal (Ind053 → Ind056) looks like "removed + added" — map it aga
 Result: next to the original — <IED>_GOOSE_updated_<date>_<time>.xml (the original is not changed). The file is written only when something changed; otherwise the report says "nothing to update". Report _goose_update_report_<date>_<time>.txt — in the same folder and in the log.
 Excel and General_PB are not changed. If a data set changed, update it in General_PB too.
 
-## 7. Open Omicron folder
+## 7. Create XRIO_test_objects (*.xrio files)
+What it does: for every selected device it creates Test Universe test objects — one per sheet "Omicron AI <test>" that subscribes to SV streams (column F — SV ID).
+Steps: as in section 4 — the button, the list of devices with check boxes, Create.
+What is written (Test Universe dialog "Device Settings"); everything else of the master stays as it is:
+    Name/description       ← IEDName
+    Manufacturer           ← Manufacturer of the device type (General_PB, Device_Type); not set — empty
+    Device type            ← Order code of the device (General_PB, GEN), else order_code of the type; not set — empty
+    Device address         ← Station Bus IP (GEN, IP SB), if none — Process Bus IP (IP PB)
+    Substation: Name       ← Project name   (General_PB Editor → Project)
+    Substation: Address    ← Project address (General_PB Editor → Project)
+    Bay: Name              ← BAY of the device (Settings_IED)
+The nominal values come from the sheet SV of General_PB (columns N…W) of the streams the test subscribes to:
+    f nom                  ← F, Hz
+    V nom (secondary)      ← Vn secondary f-f, V
+    V primary              ← Vn primary f-f, kV × 1000
+    I nom (secondary)      ← In secondary, A
+    I primary              ← In primary, A
+    Residual voltage/current factors:
+       VLN / VN            = (Vneutral primary × 1000 / Vneutral secondary) / (V primary / V nom)
+       IN / I nom          = (I primary / I nom) / (Ineutral primary / Ineutral secondary)
+       VN sec, IN sec, instrument transformer ← Vneutral secondary, Ineutral secondary, Instrumental transformer
+In General_PB these values are set in the device type (Device_Type, block SVCB<n>; default — the values of test_object_default.xrio) and go to the sheet SV with Create / Update Gen/SV. Update keeps values changed by hand on the sheet SV.
+Check: all SV streams of one test must have the same nominal values. If they differ or are empty, NO file is created for this test, the program shows a message and the reason goes into the report, for example:
+    W1G_D60 / Test 2: SV streams have different nominal values - test object cannot be created for this configuration: In secondary, A MU02_QW1G_01 1 <> MU01_QC1G_02 5
+Result:
+    Omicron\\<IED>\\test_object_<IED>_AI_Test_<n>.xrio
+    Omicron\\_xrio_report.txt                     — report
+A device without any SV subscription (no "Omicron AI" sheets or no SV ID on them): ONE file Omicron\\<IED>\\test_object_<IED>.xrio — only the first part is filled (nameplate and location), the nominal values stay as in the master. If the device has tests with subscriptions, a sheet without SV ID is just skipped (a note in the report).
+If the file already exists (you may have added relay settings to it in Test Universe), it is NOT overwritten: a file with the date and time in its name (…_<date>_<time>.xrio) is written next to it.
+
+## 8. Open Omicron folder
 Opens the folder <Project>\\Omicron in Explorer. If it does not exist yet, the program says so.
 
-## 8. Typical messages and what to do
+## 9. Typical messages and what to do
     Project folder not found / General_PB.xlsm not found  → choose the folder with General_PB.xlsm and DOC
     No master .ohc file / Master file not found           → put default_01.ohc or default_goose.xml into Library
+    Master test object not found                          → put test_object_default.xrio into Library
+    SV streams have different nominal values / nominal values empty → correct the nominal values on the sheet SV of General_PB (section 7)
     Folder with the CID files not found                   → create the folder CID in the project
     CID files are missing …                               → add the CID files of the listed devices (section 5)
     SV ID … not on General_PB SV                          → the SV ID of the test sheet is not in General_PB; the stream stays as in the master

@@ -5,12 +5,14 @@ ied2omicron.py - "IED → OMICRON Auto Config": GUI for the OMICRON files of a G
 
   python ied2omicron.py
 
-Needs next to it: omicron_configuration.py, omicron_goose_config.py, ied_doc_manual.py
+Needs next to it: omicron_configuration.py, omicron_goose_config.py, omicron_xrio.py, ied_doc_manual.py
 Needs: Python 3 (with tkinter), openpyxl (pip install openpyxl).
 
   Project folder          General_PB.xlsm, DOC\\, Library\\, CID\\
   Create Omicron_configurations  -> Omicron\\<IED>\\<IED>_Omicron_AI_Test_<n>.ohc
   Create GOOSE_configurations    -> Omicron\\<IED>\\<IED>_GOOSE.xml
+  Create XRIO_test_objects       -> Omicron\\<IED>\\test_object_<IED>_AI_Test_<n>.xrio
+                                    (an existing file is kept: new file with date and time)
   Before creating: the list of devices with check boxes.
   Update GOOSE_configurations    -> choose existing *_GOOSE.xml file(s), then the folder with
                                     the new CID files -> <name>_updated_<date>_<time>.xml
@@ -23,12 +25,17 @@ from tkinter.scrolledtext import ScrolledText
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import omicron_configuration as oc            # noqa: E402
 import omicron_goose_config as og             # noqa: E402
+import omicron_xrio as ox                     # noqa: E402
 import ied_doc_manual as man                  # noqa: E402
 
 APP = "IED → OMICRON Auto Config"
-VERSION = "v 0.0.2"
+VERSION = "v 0.0.3"
 SETTINGS = os.path.join(os.path.expanduser("~"), ".ied2omicron.json")
 OLD_SETTINGS = os.path.join(os.path.expanduser("~"), ".ied_doc_configurator.json")   # v0.0.2 before the rename
+
+
+JOBS = {"ohc": "Omicron_configurations", "goose": "GOOSE_configurations", "xrio": "XRIO_test_objects"}
+REPORTS = {JOBS["ohc"]: oc.REPORT, JOBS["goose"]: og.REPORT, JOBS["xrio"]: ox.REPORT}
 
 
 def load_settings():
@@ -76,6 +83,8 @@ class App(tk.Tk):
         self.prj = tk.StringVar(value=st.get("project", ""))
         ttk.Entry(pf, textvariable=self.prj).pack(side="left", fill="x", expand=True, padx=6)
         ttk.Button(pf, text="Browse...", command=self.browse).pack(side="left")
+        self.b_open = ttk.Button(pf, text="Open Omicron folder", command=self.open_out)
+        self.b_open.pack(side="left", padx=(6, 0))
 
         # ---- actions
         bf = ttk.Frame(self, padding=(14, 6))
@@ -86,8 +95,8 @@ class App(tk.Tk):
         self.b_goose.pack(side="left", padx=10, ipadx=10, ipady=6)
         self.b_upd = ttk.Button(bf, text="Update GOOSE_configurations", command=self.start_update)
         self.b_upd.pack(side="left", ipadx=10, ipady=6)
-        self.b_open = ttk.Button(bf, text="Open Omicron folder", command=self.open_out)
-        self.b_open.pack(side="right", ipady=6)
+        self.b_xrio = ttk.Button(bf, text="Create XRIO_test_objects", command=lambda: self.start("xrio"))
+        self.b_xrio.pack(side="left", padx=(10, 0), ipadx=10, ipady=6)
 
         # ---- log
         lf = ttk.Frame(self, padding=(14, 4, 14, 0))
@@ -124,7 +133,7 @@ class App(tk.Tk):
 
     def set_busy(self, b):
         self.busy = b
-        for w in (self.b_ohc, self.b_goose, self.b_upd):
+        for w in (self.b_ohc, self.b_goose, self.b_upd, self.b_xrio):
             w.configure(state="disabled" if b else "normal")
 
     def close_overlay(self):
@@ -211,7 +220,7 @@ class App(tk.Tk):
         if self.busy:
             return
         prj = self.prj.get().strip()
-        mod = oc if kind == "ohc" else og
+        mod = {"ohc": oc, "goose": og, "xrio": ox}[kind]
         try:
             ieds = mod.list_devices(prj)
         except mod.UserError as ex:
@@ -221,7 +230,7 @@ class App(tk.Tk):
             messagebox.showerror(APP, "No device files in %s" % os.path.join(prj, "DOC"))
             return
         save_settings({"project": prj})
-        title = "Omicron_configurations - devices" if kind == "ohc" else "GOOSE_configurations - devices"
+        title = JOBS[kind] + " - devices"
         fr = self.make_overlay(title)
 
         # master choice (only .ohc, only if there are several)
@@ -319,7 +328,7 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- work (thread)
     def run_job(self, kind, prj, sel, master):
         self.set_busy(True)
-        name = "Omicron_configurations" if kind == "ohc" else "GOOSE_configurations"
+        name = JOBS[kind]
         self.status.set("Working: %s (%d device(s)) ..." % (name, len(sel)))
         self.write("=" * 70)
         self.write("%s: %s" % (name, ", ".join(sel)))
@@ -329,11 +338,14 @@ class App(tk.Tk):
 
         def work():
             try:
+                probs = []
                 if kind == "ohc":
                     made, lines = oc.run(prj, sel, master or None, log=log)
+                elif kind == "xrio":
+                    made, lines, probs = ox.run(prj, sel, log=log)
                 else:
                     made, lines = og.run(prj, sel, log=log)
-                self.q.put(("done", (name, made, lines)))
+                self.q.put(("done", (name, made, lines, probs)))
             except (oc.UserError, og.UserError) as ex:
                 self.q.put(("error", str(ex)))
             except Exception:
@@ -347,7 +359,8 @@ class App(tk.Tk):
                 if what == "log":
                     self.write(val)
                 elif what == "done":
-                    name, made, lines = val
+                    name, made, lines = val[:3]
+                    probs = val[3] if len(val) > 3 else []
                     self.write("")
                     for l in lines:
                         self.write(l)
@@ -356,10 +369,16 @@ class App(tk.Tk):
                         self.status.set("%s: %d file(s) written next to the originals" % (name, made))
                         messagebox.showinfo(APP, "%s: %d file(s) written next to the originals.\n\n"
                                                  "Report: _goose_update_report_<date>_<time>.txt" % (name, made))
+                    elif probs:
+                        # XRIO: tests whose SV streams have different / empty nominal values
+                        self.status.set("%s: %d file(s) written, %d problem(s)" % (name, made, len(probs)))
+                        more = "\n  ... (%d more)" % (len(probs) - 12) if len(probs) > 12 else ""
+                        messagebox.showwarning(APP, "%s: %d file(s) written.\n\nNOT created:\n  %s%s\n\nReport: %s\\%s" %
+                                               (name, made, "\n  ".join(probs[:12]), more, oc.OUT_DIR, REPORTS[name]))
                     else:
                         self.status.set("%s: %d file(s) written - folder %s" % (name, made, oc.OUT_DIR))
                         messagebox.showinfo(APP, "%s: %d file(s) written.\n\nReport: %s\\%s" %
-                                            (name, made, oc.OUT_DIR, oc.REPORT if name.startswith("Omicron") else og.REPORT))
+                                            (name, made, oc.OUT_DIR, REPORTS[name]))
                 elif what == "error":
                     self.write(val)
                     self.set_busy(False)
