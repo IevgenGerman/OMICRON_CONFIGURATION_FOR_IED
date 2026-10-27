@@ -40,7 +40,14 @@ What is built:
       the row "Bin. out n" / "vBin. out g-k" maps its ELEMENT to CMC output n / 24+(g-1)*24+k
   A GCB is found in the CID files by its MAC address (GEN of General_PB gives the MAC of
   IED Name + GCB Name), so the IED name inside the CID may differ from the project name.
-  Before anything is written: a GCB without a CID file -> message, the script stops.
+  v0.0.4 - every IED ONLY FROM ITS OWN FILE: a CID / ICD / IID gives its first IED only
+  (the other IEDs inside it are copies of publishers kept for the subscriptions - no VLAN,
+  default repetition times - and are never used); an SCD gives all its IEDs.
+  All GOOSE parameters (MAC, APPID, GoID, GoCB reference, VLAN ID / priority, ConfRev,
+  MinTime / MaxTime, data set) come from that own file; General_PB GEN only gives the MAC to
+  find it (a difference CID / General_PB -> note in the report).
+  A device that needs a GCB without the own CID file of its IED (or without a MAC in GEN)
+  is NOT created: message + report "NOT CREATED - reason"; the other devices are made.
 Needs: Python 3, openpyxl (pip install openpyxl).
 """
 import os, re, sys, glob, shutil, tempfile, datetime, argparse, warnings
@@ -93,15 +100,26 @@ class Scl:
         self.lnt = {e.get("id"): e for e in dtt.findall(q("LNodeType"))} if dtt is not None else {}
         self.dot = {e.get("id"): e for e in dtt.findall(q("DOType"))} if dtt is not None else {}
         self.dat = {e.get("id"): e for e in dtt.findall(q("DAType"))} if dtt is not None else {}
+        ied_list = [i.get("name") for i in r.findall(q("IED"))]
         self.ieds = {i.get("name"): i for i in r.findall(q("IED"))}
+        # v0.0.4: every IED only from ITS OWN file. A CID / ICD / IID describes one IED (the first);
+        # the other IEDs inside it are copies of publishers kept for the subscriptions (no VLAN,
+        # default repetition times) and are never used. An SCD owns all its IEDs.
+        if os.path.splitext(path)[1].lower() == ".scd":
+            self.own = set(ied_list)
+        else:
+            self.own = set(ied_list[:1])
         self.gcbs = {}
+        self.copies = {}                     # MAC -> IED name of a copy (for the messages)
         for cap in r.iter(q("ConnectedAP")):
             ied = cap.get("iedName")
             for g in cap.findall(q("GSE")):
                 adr = {p.get("type"): T(p.text) for p in g.iter(q("P"))}
                 mn, mx = g.find(q("MinTime")), g.find(q("MaxTime"))
                 mac = mac_key(adr.get("MAC-Address", ""))
-                if mac:
+                if mac and ied not in self.own:
+                    self.copies.setdefault(mac, ied)
+                elif mac:
                     self.gcbs[mac] = dict(scl=self, ied=ied, ld=g.get("ldInst"), cb=g.get("cbName"),
                                           appid=adr.get("APPID", "0"), vlan=adr.get("VLAN-ID", "0"),
                                           prio=adr.get("VLAN-PRIORITY", "0"),
@@ -189,14 +207,23 @@ class Scl:
         return out
 
 
-def load_scl(folder):
+def load_scl(folder, copies=None):
+    """GCBs of the OWN IEDs of all SCL files, by MAC. copies (dict, optional) gets
+    MAC -> [(IED, file)] of the copies inside other files (only for the messages)."""
     gcbs, errs = {}, []
     files = [p for p in glob.glob(os.path.join(folder, "*")) if os.path.splitext(p)[1].lower() in (".cid", ".icd", ".scd", ".iid")]
     for p in sorted(files):
         try:
             s = Scl(p)
             for mac, g in s.gcbs.items():
+                if mac in gcbs and gcbs[mac]["ied"] != g["ied"]:
+                    errs.append("MAC %s: own GCB of %s (%s) and of %s (%s) - the first is used"
+                                % (mac, gcbs[mac]["ied"], os.path.basename(gcbs[mac]["scl"].path), g["ied"],
+                                   os.path.basename(p)))
                 gcbs.setdefault(mac, g)
+            if copies is not None:
+                for mac, ied in s.copies.items():
+                    copies.setdefault(mac, []).append((ied, os.path.basename(p)))
         except Exception as ex:
             errs.append("%s: not read - %s" % (os.path.basename(p), ex))
     return gcbs, files, errs
@@ -362,7 +389,7 @@ def fill_master(txt, subs, sims):
 
 
 # ---------------------------------------------------------------- one device
-def plan_device(ied, dev, gen, gcbs):
+def plan_device(ied, dev, gen, gcbs, copies=None):
     """GCBs needed by a device: [(kind, mac, label for messages, rows)], missing [(text)]"""
     plan, missing = [], []
     subs = {}
@@ -384,10 +411,18 @@ def plan_device(ied, dev, gen, gcbs):
     for kind, d in (("sub", subs), ("sim", sims)):
         for mac, rows in d.items():
             what = "%s / GCB %s" % (rows[0][3] or ied, rows[0][4])
+            pub = rows[0][3] or ied
             if mac.startswith("?"):
-                missing.append("%s: %s - no MAC address (General_PB GEN) for it" % (ied, what))
+                missing.append("%s / GCB %s - no MAC address for it in General_PB GEN" % (pub, rows[0][4]))
             elif mac not in gcbs:
-                missing.append("%s: %s (MAC %s) - no CID file with this GCB" % (ied, what, mac))
+                cp = (copies or {}).get(mac)
+                if cp:
+                    missing.append("%s / GCB %s (MAC %s) - no own CID file of %s in the CID folder; it is "
+                                   "only a copy inside %s (a copy has no VLAN / repetition times, it is not used)"
+                                   % (pub, rows[0][4], mac, pub, ", ".join(sorted(set(f for _, f in cp)))))
+                else:
+                    missing.append("%s / GCB %s (MAC %s) - no CID file of %s in the CID folder"
+                                   % (pub, rows[0][4], mac, pub))
             else:
                 plan.append((kind, mac, what, rows))
     return plan, missing
@@ -476,8 +511,9 @@ def list_devices(prj):
 
 
 def run(prj, devices, master=MASTER_NAME, log=print):
-    """builds <IED>_GOOSE.xml of the given devices; returns (files written, report lines).
-    A GCB without a CID file -> MissingCid (nothing is written)."""
+    """builds <IED>_GOOSE.xml of the given devices; returns (files written, report lines, problems).
+    v0.0.4: every GCB only from the own CID file of its IED. A device with a GCB that has no own
+    CID file (or no MAC in General_PB) is NOT created: problems = ["<IED>: NOT CREATED - reason", ...]."""
     gpb, doc, cid, out = project_paths(prj)
     mpath = os.path.join(prj, "Library", master or MASTER_NAME)
     if not os.path.isfile(mpath):
@@ -486,8 +522,9 @@ def run(prj, devices, master=MASTER_NAME, log=print):
         raise UserError("Folder with the CID files not found: %s" % cid)
     log("Reading General_PB, CID files and device files ...")
     gen = read_gen(gpb)
-    gcbs, cidfiles, cerr = load_scl(cid)
-    plans, missing, notes = {}, [], list(cerr)
+    copies = {}
+    gcbs, cidfiles, cerr = load_scl(cid, copies)
+    plans, notes, probs = {}, list(cerr), []
     for ied in devices:
         try:
             dev = read_device(os.path.join(doc, ied + ".xlsm"))
@@ -497,16 +534,13 @@ def run(prj, devices, master=MASTER_NAME, log=print):
         if not dev["bi"] and not dev["bo"]:
             notes.append("%s: no Omicron Binary Inputs / Outputs - skipped" % ied)
             continue
-        plan, miss = plan_device(ied, dev, gen, gcbs)
+        plan, miss = plan_device(ied, dev, gen, gcbs, copies)
+        if miss:
+            # ---- the device is NOT created: the reasons go to the message and the report
+            for m in miss:
+                probs.append("%s: NOT CREATED - %s" % (ied, m))
+            continue
         plans[ied] = plan
-        missing += miss
-    # ---- check BEFORE anything is written
-    if missing:
-        raise MissingCid("CID files are missing in %s\n(found %d SCL file(s): %s)\n\n%s\n\n"
-                         "Copy the CID files of these devices into the CID folder and run again.\n"
-                         "Nothing was written."
-                         % (cid, len(cidfiles), ", ".join(os.path.basename(p) for p in cidfiles) or "-",
-                            "\n".join("  " + m for m in missing)))
     txt, enc = read_master(mpath)
     os.makedirs(out, exist_ok=True)
     rep, made = [], 0
@@ -526,12 +560,16 @@ def run(prj, devices, master=MASTER_NAME, log=print):
         except Exception as ex:
             notes.append("%s: %s" % (ied, ex))
     lines = ["omicron_goose_config  %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-             "Project : %s" % prj, "Master  : %s" % os.path.basename(mpath), "CID     : %d file(s)" % len(cidfiles),
-             "Output  : %s" % out, ""] + rep + (["", "NOTES:"] + ["  " + n for n in notes] if notes else []) + \
-            ["", "%d file(s) written." % made]
+             "Project : %s" % prj, "Master  : %s" % os.path.basename(mpath),
+             "CID     : %d file(s): %s" % (len(cidfiles), ", ".join(os.path.basename(p) for p in cidfiles) or "-"),
+             "Output  : %s" % out, ""] + rep + \
+            (["", "NOT CREATED (put the CID file of the IED into the CID folder and run again):"] +
+             ["  " + p for p in probs] if probs else []) + \
+            (["", "NOTES:"] + ["  " + n for n in notes] if notes else []) + \
+            ["", "%d file(s) written, %d device(s) not created." % (made, len(set(p.split(":")[0] for p in probs)))]
     with open(os.path.join(out, REPORT), "w", encoding="utf-8-sig") as f:
         f.write("\n".join(lines) + "\n")
-    return made, lines
+    return made, lines, probs
 
 
 # ---------------------------------------------------------------- UPDATE an existing GOOSE configuration
@@ -759,8 +797,10 @@ def main():
             sel = [i for i in ieds if i.lower() in [d.lower() for d in a.device]]
         else:
             sel = ieds if a.all else choose(ieds, "Devices in DOC:")
-        made, lines = run(prj, sel, a.master)
+        made, lines, probs = run(prj, sel, a.master)
         print("\n" + "\n".join(lines))
+        if probs:
+            code = 2
     except MissingCid as ex:
         print("\n" + str(ex))
         code = 2

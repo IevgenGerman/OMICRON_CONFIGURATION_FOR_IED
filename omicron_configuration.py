@@ -22,15 +22,14 @@ What is written into the master (everything else stays as it is):
   binary outputs : name of "Bin. out n" / "vBin. out g-k" <- Omicron Binary Outputs, column D
   analog outputs : SV Voltage 1..3 / SV Current 1..3 (4 channels each) <- Omicron AI <test>, column D
                    V L1..V E -> Voltage 1, V(2)-x -> Voltage 2, V(3)-x -> Voltage 3 (I the same)
-  SV stream n    : SV ID of group n (column F of V(n) / I(n)) + General_PB SV:
-                   Ied = IEDName, SvId, MAC, APP ID, VLAN, VLAN p,
-                   DataSet = IEDName + Dataset, ControlBlock = IEDName + LD/LLN0$MS$MSVCB0<LD no>,
-                   ConfRev 1 - written into the SV configuration of the stream (dialog
-                   'Configure Sampled Values', tab Stream n) and into its report;
-                   a stream without SV ID stays as in the master
-  data attributes: the CMC channel of every dataset attribute of a used stream
-                   (Dataset Mapping) and the report rows = the channel name;
-                   display names (MU01.TCTR1.AmpSv ...) stay from the master
+  name flag      : every renamed channel gets the flag 'name changed by the user' (as Test Universe)
+  SV stream n    : SV ID of group n (column F of V(n) / I(n)) + General_PB SV, written into the SV
+                   configuration of the stream (dialog 'Configure Sampled Values', tab Stream n):
+                   svID, MAC, APP ID, VLAN, VLAN p, ConfRev 1, and the Dataset Mapping (8 dataset
+                   attributes -> CMC channels / names); a stream without SV ID stays as in the master
+                   v0.0.4 - as done by hand in Test Universe, these stay AS IN THE MASTER:
+                   Control block reference, Dataset reference, the tables 'Merging Unit' and
+                   'Data Attributes' (report); time source / PTP come from the master too
 An empty Omicron ID keeps the name of the master ("vBin. in 1-2", "V(2)-1", ...).
 Needs: Python 3, openpyxl (pip install openpyxl).
 """
@@ -101,6 +100,16 @@ def terminals(b, name, nxt):
     a, z = section(b, name, nxt)
     L = list(iter_cstr(b, a, z))
     return [L[k] for k in range(len(L) - 1) if L[k + 1][2] == "Name" and L[k][2] not in ("Name", "")]
+
+
+def name_flag_pos(b, name_end):
+    """v0.0.4: byte 'the name was changed by the user' of a channel record:
+    <name> 'Name' '' 'Number' <00000000 FLAG ...>; Test Universe sets it to 1 when a channel is
+    renamed (checked with a renamed 'Bin. in 5'). Returns its position or None."""
+    for (s, e, t) in iter_cstr(b, name_end, min(len(b), name_end + 200)):
+        if t == "Number":
+            return e + 4 if b[e:e + 4] == b"\x00\x00\x00\x00" and b[e + 4] in (0, 1) else None
+    return None
 
 
 def mu_records(b):
@@ -323,6 +332,16 @@ def build(master, dev, test, sv, notes, ied):
     b = master.b
     reps = []
 
+    flags = set()
+
+    def set_flag(name_end):
+        fp = name_flag_pos(b, name_end)
+        if fp is None:
+            notes.append("%s: 'name changed' flag of a channel not found in the master" % ied)
+        elif b[fp] != 1 and fp not in flags:
+            flags.add(fp)
+            reps.append((fp, fp + 1, b"\x01"))
+
     def rename(term, values, what):
         n = 0
         for (s, e, old) in term:
@@ -332,6 +351,7 @@ def build(master, dev, test, sv, notes, ied):
                     notes.append("%s: %s '%s' - not only A-Z a-z 0-9 _" % (ied, what, new))
                 if new != old:
                     reps.append((s, e, cstr(new)))
+                    set_flag(e)
                     n += 1
         return n
 
@@ -364,6 +384,7 @@ def build(master, dev, test, sv, notes, ied):
                 names[k] = oid
                 if oid != old:
                     reps.append((s, e, cstr(oid)))
+                    set_flag(e)
                     nai += 1
         for g in range(3):
             rec = master.mu[g]
@@ -376,31 +397,14 @@ def build(master, dev, test, sv, notes, ied):
             ld = d["ds"].split("/")[0] if "/" in d["ds"] else ""
             ldno = re.sub(r"\D", "", ld)
             cb = "%s%s/LLN0$MS$MSVCB%02d" % (d["ied"], ld, int(ldno)) if ldno else ""
-            vals = {
-                "Enabled": b"\x01",
-                "Ied": astr(d["ied"]),
-                "SvId": astr(d["svid"]),
-                "Simulated": b"\x00",
-                "EthernetPort": astr(ETH_PORT),
-                "DestinationMacAddress": astr(d["mac"].replace("-", ":").upper()),
-                "ControlBlockReference": astr(cb),
-                "DataSetReference": astr(d["ied"] + d["ds"]),
-                "ApplicationId": struct.pack("<H", int(d["app"] or 0) & 0xFFFF),
-                "VlanId": struct.pack("<H", int(d["vlan"] or 0) & 0xFFFF),
-                "VlanPriority": bytes([int(d["prio"] or 0) & 0xFF]),
-                "ConfigurationRevision": struct.pack("<I", CONF_REV),
-            }
-            for f, v in vals.items():
-                s, e = rec[f]
-                reps.append((s, e, v))
+            # v0.0.4: the table 'Merging Unit' (report) stays as in the master (as done by hand)
             # the real configuration (what the dialog shows): block 2 + the 8 attributes
             cbk = master.cbs[g]
             mac = bytes(int(x, 16) for x in re.split(r"[-:]", d["mac"]) if x) if d["mac"] else b""
             b2 = cbk["b2"]
             reps.append((b2["svid"][0], b2["svid"][1], astr(d["svid"])))
             reps.append((b2["mac"][0], b2["mac"][1], struct.pack("<I", len(mac)) + mac))
-            reps.append((b2["cb"][0], b2["cb"][1], astr(cb)))
-            reps.append((b2["ds"][0], b2["ds"][1], astr(d["ied"] + d["ds"])))
+            # v0.0.4: Control block reference / Dataset reference stay as in the master (as done by hand)
             reps.append((b2["nums"][0], b2["nums"][1],
                          struct.pack("<HHBI", int(d["app"] or 0) & 0xFFFF, int(d["vlan"] or 0) & 0xFFFF,
                                      int(d["prio"] or 0) & 0xFF, CONF_REV)))
@@ -413,8 +417,8 @@ def build(master, dev, test, sv, notes, ied):
             if not d["mac"] or not d["app"] or d["vlan"] in (None, ""):
                 notes.append("%s / %s: SV ID %s - MAC / APP ID / VLAN empty on General_PB" % (ied, tname, sid))
 
-    # data attributes: channel of each row = channel name (stream g: I1..I4, V1..V4)
-    if len(master.attr) == 24:
+    # v0.0.4: the table 'Data Attributes' (report rows, GUIDs) stays as in the master (as done by hand)
+    if False:                                          # kept for reference (v0.0.3)
         for r, (s, e, key) in enumerate(master.attr):
             g, j = r // 8, r % 8
             k = (12 + g * 4 + j) if j < 4 else (g * 4 + j - 4)    # index in the 24 channels

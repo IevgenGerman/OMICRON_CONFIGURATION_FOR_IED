@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.0.4 (dev)
+
+- GOOSE: every IED only from its own file. A CID / ICD / IID gives only its own (first) IED; the copies of publishers inside it (no VLAN, default repetition times) are never used. An SCD gives all its IEDs.
+- GOOSE: a device that needs an IED without its own CID file (or without a MAC in General_PB GEN) is not created; message + report "NOT CREATED - reason"; the other devices are made (before: the whole run stopped).
+- Report: list of the CID files used.
+- Hardware configuration (.ohc): a renamed channel (BI, BO, analog) gets the flag "name changed by the user", as Test Universe does.
+- Hardware configuration (.ohc), SV: only svID, MAC, APPID, VLAN, VLAN priority, ConfRev and the Dataset Mapping are written; Control block reference, Dataset reference and the report tables (Merging Unit, Data Attributes) stay as in the master (as done by hand).
+- Master default_01.ohc: time source Trigger via PTPv2 (Utility Profile IEC/IEEE 61850-9-3, ETH1) saved in the file.
+- XRIO: numbers written like Test Universe (15 or 17 significant digits; the same order of operations for VLNVN / ININOM).
+- Checked on W1G_D60: GOOSE .xml and XRIO byte-identical with the files made by hand; .ohc identical except bytes Test Universe leaves uninitialised.
+
 ## v0.0.3
 - **Create XRIO_test_objects**: OMICRON Test Universe test objects (`.xrio`) from `Library\test_object_default.xrio`.
   - One test object per `Omicron AI <test>` sheet with SV subscriptions: `Omicron\<IED>\test_object_<IED>_AI_Test_<n>.xrio`.

@@ -29,7 +29,7 @@ import omicron_xrio as ox                     # noqa: E402
 import ied_doc_manual as man                  # noqa: E402
 
 APP = "IED → OMICRON Auto Config"
-VERSION = "v 0.0.3"
+VERSION = "v 0.0.4 (dev)"
 SETTINGS = os.path.join(os.path.expanduser("~"), ".ied2omicron.json")
 OLD_SETTINGS = os.path.join(os.path.expanduser("~"), ".ied_doc_configurator.json")   # v0.0.2 before the rename
 
@@ -344,7 +344,7 @@ class App(tk.Tk):
                 elif kind == "xrio":
                     made, lines, probs = ox.run(prj, sel, log=log)
                 else:
-                    made, lines = og.run(prj, sel, log=log)
+                    made, lines, probs = og.run(prj, sel, log=log)
                 self.q.put(("done", (name, made, lines, probs)))
             except (oc.UserError, og.UserError) as ex:
                 self.q.put(("error", str(ex)))
@@ -370,7 +370,8 @@ class App(tk.Tk):
                         messagebox.showinfo(APP, "%s: %d file(s) written next to the originals.\n\n"
                                                  "Report: _goose_update_report_<date>_<time>.txt" % (name, made))
                     elif probs:
-                        # XRIO: tests whose SV streams have different / empty nominal values
+                        # XRIO: tests whose SV streams have different / empty nominal values;
+                        # GOOSE: devices without the own CID file of a publisher / subscriber IED
                         self.status.set("%s: %d file(s) written, %d problem(s)" % (name, made, len(probs)))
                         more = "\n  ... (%d more)" % (len(probs) - 12) if len(probs) > 12 else ""
                         messagebox.showwarning(APP, "%s: %d file(s) written.\n\nNOT created:\n  %s%s\n\nReport: %s\\%s" %

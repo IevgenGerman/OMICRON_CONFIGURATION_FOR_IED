@@ -25,17 +25,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      - name: Build exe
-        run: pyinstaller --clean --onefile --windowed --name IED2OMICRON ied2omicron.py
+      - name: Build exe (name with the version of ied2omicron.py)
+        shell: pwsh
+        run: |
+          $name = python exe_name.py
+          echo "EXENAME=$name" >> $env:GITHUB_ENV
+          pyinstaller --clean --onefile --windowed --name $name ied2omicron.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: IED2OMICRON
-          path: dist/IED2OMICRON.exe
+          name: ${{ env.EXENAME }}
+          path: dist/${{ env.EXENAME }}.exe
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/IED2OMICRON.exe
+          files: dist/${{ env.EXENAME }}.exe

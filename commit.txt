@@ -1,0 +1,30 @@
+v0.0.4: GOOSE from own CID only, .ohc and XRIO identical to manual files
+
+GOOSE
+- Every IED is taken only from its own CID file. Copies of publishers
+  inside another device's CID are ignored (they have no VLAN and
+  default repetition times).
+- A device is not created if a needed IED has no own CID file, or is
+  described in two CID files. The reason is shown in a message and in
+  the report; the other devices are created.
+- The report lists the CID files used.
+
+Hardware configuration (.ohc)
+- Renamed channels (BI, BO, analog) get the "name changed by the user"
+  flag, as Test Universe does.
+- SV streams: only svID, MAC, APPID, VLAN, VLAN priority, ConfRev and
+  the Dataset Mapping are written. Control block reference, Dataset
+  reference and the report tables stay as in the master.
+- Time source (PTP) comes from the master default_01.ohc.
+
+XRIO
+- Numbers are written like Test Universe (15 or 17 digits, same order
+  of operations for VLNVN / ININOM).
+
+Build
+- build_exe.bat and GitHub Actions put the version into the exe name:
+  IED2OMICRON_v0.0.4.exe.
+
+Checked on W1G_D60: GOOSE and XRIO are byte-identical with the files
+made by hand; .ohc differs only in bytes Test Universe leaves
+uninitialised.

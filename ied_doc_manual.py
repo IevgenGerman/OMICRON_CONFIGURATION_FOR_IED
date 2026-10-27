@@ -86,10 +86,11 @@ MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник 
 Порожній Omicron ID → канал зберігає назву з майстра («vBin. in 1-2», «V(2)-1» …).
 Потоки SV (з General_PB, аркуш SV, за SV ID) — у вікні Test Universe «Configure Sampled Values», вкладка Stream n:
     svID, Destination MAC, APPID, VLAN ID, VLAN priority     — з аркуша SV
-    Dataset reference        = IEDName + Dataset   (MU01_QW1GMU01/LLN0$PhsMeas1)
-    Control block reference  = IEDName + LD/LLN0$MS$MSVCB0<номер LD>
-    ConfRev = 1, порт ETH1
-Також заповнюється Dataset Mapping — який канал CMC іде в який атрибут набору даних. Підписи атрибутів (MU01.TCTR1.AmpSv…) і рядок «Select IED / Sampled Values ID» лишаються з майстра. Потік без SV ID лишається таким, як у майстрі.
+    ConfRev = 1
+Також заповнюється Dataset Mapping — який канал CMC іде в який атрибут набору даних.
+Як і при ручному налаштуванні, з майстра лишаються: Control block reference, Dataset reference, рядок «Select IED / Sampled Values ID», підписи атрибутів (MU01.TCTR1.AmpSv…) і службові таблиці звіту. Потік без SV ID лишається таким, як у майстрі.
+Кожен перейменований канал (BI, BO, аналоговий) отримує позначку «назву змінив користувач» — як це робить Test Universe.
+Джерело часу (Time Source, PTP) береться з майстра: налаштуйте його в default_01.ohc і збережіть.
 Результат:
     Omicron\\<IED>\\<IED>_Omicron_AI_Test_<n>.ohc   — один файл на кожен аркуш «Omicron AI …» з даними
     Omicron\\<IED>\\<IED>_Omicron.ohc               — якщо даних SV немає (лише GOOSE)
@@ -110,9 +111,9 @@ MANUAL["uk"] = """# IED → OMICRON Auto Config  {version} — посібник 
         Bin. in n / Bin. out n              → вхід/вихід CMC n
         vBin. in g-k / vBin. out g-k        → 24 + (g−1)·24 + k    (1-3 → 27, 7-24 → 192)
 GCB шукається в CID за MAC-адресою (з аркуша або з General_PB, аркуш GEN), тому ім'я IED у CID може відрізнятися від назви в проєкті.
-Перевірка CID: якщо для будь-якого потрібного GCB немає CID, програма НІЧОГО НЕ ЗАПИСУЄ і показує список відсутніх (англійською), наприклад:
-    CID files are missing in …\\CID
-      W1G_D60: MU02_QC1G / GCB VT (MAC 01-0C-CD-01-00-64) - no CID file with this GCB
+Кожен IED береться ЛИШЕ З ЙОГО ВЛАСНОГО ФАЙЛУ: CID / ICD / IID дає тільки свій (перший) IED. Інші IED усередині CID — це копії видавців, які пристрій зберігає для своїх підписок (без VLAN, з часами повторів за замовчуванням), вони не використовуються. SCD дає всі свої IED.
+Перевірка CID: пристрій, для якого бракує власного CID будь-якого потрібного IED (або MAC у GEN), НЕ СТВОРЮЄТЬСЯ — програма показує повідомлення з причиною (англійською), решта пристроїв створюються, наприклад:
+    W1G_D60: NOT CREATED - W1G_F60 / GCB BAY (MAC 01-0C-CD-01-00-55) - no own CID file of W1G_F60 in the CID folder; it is only a copy inside D60.cid
 Додайте файли й запустіть знову.
 Результат: Omicron\\<IED>\\<IED>_GOOSE.xml і Omicron\\_goose_report.txt. Звіт також показує розбіжності General_PB ↔ CID (GoID, APPID, VLAN) — у файл іде значення з CID, тобто реальне значення пристрою; і сигнали з аркуша, яких немає в наборі даних CID.
 Обмеження версії: підтримуються сигнали Boolean і якість (.q). GCB з іншими типами (Dbpos, INT, FLOAT, Timestamp) пропускається з приміткою у звіті.
@@ -176,7 +177,7 @@ Excel і General_PB не змінюються. Якщо склад набору 
     Master test object not found                          → покладіть test_object_default.xrio у Library
     SV streams have different nominal values / nominal values empty → виправте номінали на аркуші SV General_PB (розділ 7)
     Folder with the CID files not found                   → створіть папку CID у проєкті
-    CID files are missing …                               → додайте CID названих пристроїв (розділ 5)
+    NOT CREATED - no own CID file of …                    → додайте власний CID названого IED (розділ 5)
     SV ID … not on General_PB SV                          → SV ID з аркуша тесту немає в General_PB; потік лишається як у майстрі
     data type(s) … not supported yet                      → у наборі даних тип, який ще не підтримується (розділ 5)
     not read - …                                          → файл пошкоджений або нечитабельний
@@ -252,10 +253,11 @@ Where the data come from (device file DOC\\<IED>.xlsm):
 Empty Omicron ID → the channel keeps the name of the master ("vBin. in 1-2", "V(2)-1" …).
 SV streams (from General_PB, sheet SV, by SV ID) — in the Test Universe dialog "Configure Sampled Values", tab Stream n:
     svID, Destination MAC, APPID, VLAN ID, VLAN priority     — from the sheet SV
-    Dataset reference        = IEDName + Dataset   (MU01_QW1GMU01/LLN0$PhsMeas1)
-    Control block reference  = IEDName + LD/LLN0$MS$MSVCB0<LD number>
-    ConfRev = 1, port ETH1
-The Dataset Mapping is filled too — which CMC channel goes into which attribute of the data set. Attribute captions (MU01.TCTR1.AmpSv…) and the line "Select IED / Sampled Values ID" stay from the master. A stream without SV ID stays as in the master.
+    ConfRev = 1
+The Dataset Mapping is filled too — which CMC channel goes into which attribute of the data set.
+As when it is done by hand, these stay from the master: Control block reference, Dataset reference, the line "Select IED / Sampled Values ID", the attribute captions (MU01.TCTR1.AmpSv…) and the report tables. A stream without SV ID stays as in the master.
+Every renamed channel (BI, BO, analog) gets the flag "name changed by the user" — as Test Universe does.
+The time source (Time Source, PTP) comes from the master: set it in default_01.ohc and save it.
 Result:
     Omicron\\<IED>\\<IED>_Omicron_AI_Test_<n>.ohc   — one file per sheet "Omicron AI …" with data
     Omicron\\<IED>\\<IED>_Omicron.ohc               — when there is no SV data (GOOSE only)
@@ -276,9 +278,9 @@ Where the data come from:
         Bin. in n / Bin. out n              → CMC input/output n
         vBin. in g-k / vBin. out g-k        → 24 + (g−1)·24 + k    (1-3 → 27, 7-24 → 192)
 A GCB is found in the CID files by its MAC address (from the sheet or from General_PB, sheet GEN), so the IED name inside the CID may differ from the project name.
-CID check: if any needed GCB has no CID file, the program writes NOTHING and lists the missing ones, for example:
-    CID files are missing in …\\CID
-      W1G_D60: MU02_QC1G / GCB VT (MAC 01-0C-CD-01-00-64) - no CID file with this GCB
+Every IED is taken ONLY FROM ITS OWN FILE: a CID / ICD / IID gives only its own (first) IED. The other IEDs inside a CID are copies of publishers kept by the device for its subscriptions (no VLAN, default repetition times); they are never used. An SCD gives all its IEDs.
+CID check: a device that needs an IED without its own CID file (or without a MAC in GEN) is NOT CREATED - the program shows a message with the reason; the other devices are made, for example:
+    W1G_D60: NOT CREATED - W1G_F60 / GCB BAY (MAC 01-0C-CD-01-00-55) - no own CID file of W1G_F60 in the CID folder; it is only a copy inside D60.cid
 Add the files and run again.
 Result: Omicron\\<IED>\\<IED>_GOOSE.xml and Omicron\\_goose_report.txt. The report also shows differences General_PB ↔ CID (GoID, APPID, VLAN) — the file gets the CID value, i.e. the real value of the device; and signals of the sheet that are not in the CID data set.
 Limits of this version: Boolean signals and quality (.q) are supported. A GCB with other types (Dbpos, INT, FLOAT, Timestamp) is skipped with a note in the report.
@@ -342,7 +344,7 @@ Opens the folder <Project>\\Omicron in Explorer. If it does not exist yet, the p
     Master test object not found                          → put test_object_default.xrio into Library
     SV streams have different nominal values / nominal values empty → correct the nominal values on the sheet SV of General_PB (section 7)
     Folder with the CID files not found                   → create the folder CID in the project
-    CID files are missing …                               → add the CID files of the listed devices (section 5)
+    NOT CREATED - no own CID file of …                    → add the own CID file of the named IED (section 5)
     SV ID … not on General_PB SV                          → the SV ID of the test sheet is not in General_PB; the stream stays as in the master
     data type(s) … not supported yet                      → the data set has a type that is not supported yet (section 5)
     not read - …                                          → the file is damaged or cannot be read

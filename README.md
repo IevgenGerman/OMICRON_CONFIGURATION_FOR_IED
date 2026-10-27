@@ -16,7 +16,7 @@ What General_PB is: [IEC61850_text_configurator](https://github.com/IevgenGerman
 ## Download
 
 The Windows executable is attached to every release:
-**[Releases](../../releases)** → `IED2OMICRON.exe` — no Python needed.
+**[Releases](../../releases)** → `IED2OMICRON_<version>.exe` — no Python needed.
 
 ## Run from source
 
@@ -100,10 +100,10 @@ python omicron_xrio.py           "D:\Projects\Bucha" --device W1G_D60
 
 ```bash
 pip install pyinstaller
-pyinstaller --clean --onefile --windowed --name IED2OMICRON ied2omicron.py
+pyinstaller --clean --onefile --windowed --name IED2OMICRON_v0.0.4 ied2omicron.py
 ```
 
-Result: `dist\IED2OMICRON.exe`. Pushing a tag `v*` builds the exe automatically with GitHub Actions and attaches it to the release (`.github/workflows/build.yml`).
+Result: `dist\IED2OMICRON_v0.0.4.exe` (or just run `build_exe.bat` - it takes the version from `VERSION` in ied2omicron.py). Pushing a tag `v*` builds the exe automatically with GitHub Actions and attaches it to the release (`.github/workflows/build.yml`).
 
 ## Limitations
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-16"?>
+<GOOSEConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <IsCurrentlyImporting>false</IsCurrentlyImporting>
+  <Version>1.0</Version>
+  <EthernetAdapter>1</EthernetAdapter>
+  <GeneralSimulationFlag>1</GeneralSimulationFlag>
+  <GOOSESubscriptions />
+  <GOOSESimulations />
+</GOOSEConfig>

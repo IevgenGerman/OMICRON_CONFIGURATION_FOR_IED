@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XRio xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Version>3.0.0</Version>
+	<Language>en</Language>
+	<RioConverter>
+		<Properties>
+			<Revision>0</Revision>
+			<ChangeDate>2026-10-20</ChangeDate>
+			<Author />
+		</Properties>
+		<ScriptReferences />
+		<Script />
+	</RioConverter>
+	<CUSTOM>
+		<Name>Custom</Name>
+		<Description>Custom defined relay parameters</Description>
+	</CUSTOM>
+	<RIO Type="RIOBlock" BlockType="RIO">
+		<Name>RIO</Name>
+		<Description />
+		<DEVICE Type="RIOBlock" BlockType="DEVICE">
+			<NAMEPLATE Type="RIOBlock" BlockType="DEVICE_NAMEPLATE">
+				<DEVICE_MODEL Type="Parameter">
+					<Value>Test Object 2</Value>
+				</DEVICE_MODEL>
+				<MANUFACTURER Type="Parameter">
+					<Value />
+				</MANUFACTURER>
+				<DEVICE_TYPE Type="Parameter">
+					<Value />
+				</DEVICE_TYPE>
+				<SERIALNR Type="Parameter">
+					<Value />
+				</SERIALNR>
+				<ADDITIONAL_INFO2 Type="Parameter">
+					<Value />
+				</ADDITIONAL_INFO2>
+			</NAMEPLATE>
+			<LOCATION Type="RIOBlock" BlockType="DEVICE_LOCATION">
+				<DEVICE_ADDRESS Type="Parameter">
+					<Value />
+				</DEVICE_ADDRESS>
+				<SUBSTATION Type="Parameter">
+					<Value />
+				</SUBSTATION>
+				<SUBSTATION_ADDRESS Type="Parameter">
+					<Value />
+				</SUBSTATION_ADDRESS>
+				<BAY Type="Parameter">
+					<Value />
+				</BAY>
+				<BAY_ADDRESS Type="Parameter">
+					<Value />
+				</BAY_ADDRESS>
+				<PROTECTED_OBJECT_NAME Type="Parameter">
+					<Value />
+				</PROTECTED_OBJECT_NAME>
+			</LOCATION>
+			<NOMINALVALUES Type="RIOBlock" BlockType="DEVICE_NOMINALVALUES">
+				<PHASES Type="Parameter">
+					<Value>3</Value>
+				</PHASES>
+				<FNOM Type="Parameter">
+					<Value>50</Value>
+				</FNOM>
+				<VNOM Type="Parameter">
+					<Value>100</Value>
+				</VNOM>
+				<VPRIM_LL Type="Parameter">
+					<Value>110000</Value>
+				</VPRIM_LL>
+				<INOM Type="Parameter">
+					<Value>1</Value>
+				</INOM>
+				<IPRIM Type="Parameter">
+					<Value>1000</Value>
+				</IPRIM>
+			</NOMINALVALUES>
+			<RESIDUALFACTORS Type="RIOBlock" BlockType="DEVICE_RESIDUALFACTORS">
+				<VLNVN Type="Parameter">
+					<Value>1.7321</Value>
+				</VLNVN>
+				<ININOM Type="Parameter">
+					<Value>1</Value>
+				</ININOM>
+				<VNSEC Type="Parameter">
+					<Value>33.333</Value>
+				</VNSEC>
+				<INSEC Type="Parameter">
+					<Value>1</Value>
+				</INSEC>
+				<RESIDUAL_INSTRUMENT_TRANSFORMER Type="Parameter">
+					<Value>true</Value>
+				</RESIDUAL_INSTRUMENT_TRANSFORMER>
+			</RESIDUALFACTORS>
+			<LIMITS Type="RIOBlock" BlockType="DEVICE_LIMITS">
+				<VMAX_LL Type="Parameter">
+					<Value>600</Value>
+				</VMAX_LL>
+				<IMAX Type="Parameter">
+					<Value>50</Value>
+				</IMAX>
+			</LIMITS>
+			<MISC Type="RIOBlock" BlockType="DEVICE_MISC">
+				<DEBOUNCETIME Type="Parameter">
+					<Value>0.003</Value>
+				</DEBOUNCETIME>
+				<DEGLITCHTIME Type="Parameter">
+					<Value>0</Value>
+				</DEGLITCHTIME>
+				<OVERLOADSUPTIME Type="Parameter">
+					<Value>0.05</Value>
+				</OVERLOADSUPTIME>
+				<DROP_OUT_TIME Type="Parameter">
+					<Value>0.02</Value>
+				</DROP_OUT_TIME>
+			</MISC>
+		</DEVICE>
+	</RIO>
+</XRio>
